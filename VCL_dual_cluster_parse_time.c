@@ -1,8 +1,10 @@
 #include <string.h> /* strlen  */
 #include <stdlib.h> /* strtod */
-#include <float.h>  /* DBL_MAX */
 
-#define EPSILON 1E-10
+#define VCL_DC_EPSILON 1E-10
+// the timeout to set when no timeout is given
+// would use DBL_MAX, but that makes Varnish segfault for some reason
+#define VCL_DC_INFINITY 315360000; // 10 years
 
 // C implementation of the Elasticsearch Java function 'parseTimeValue'
 // https://github.com/elasticsearch/elasticsearch/blob/v0.90.5/src/main/java/org/elasticsearch/common/unit/TimeValue.java#L228-L255
@@ -40,9 +42,9 @@ static double VCL_parse_time_value(const char* string)
 
 void VCL_set_bereq_timeout(struct sess *sp) {
     double bereq_timeout = 2 * VCL_parse_time_value(VRT_GetHdr(sp, HDR_REQ, "\027X-dual-cluster-timeout:"));
-    if (bereq_timeout <= EPSILON) {
+    if (bereq_timeout <= VCL_DC_EPSILON) {
         // no timeout!
-        bereq_timeout = DBL_MAX;
+        bereq_timeout = VCL_DC_INFINITY;
     }
     VRT_l_bereq_first_byte_timeout(sp, bereq_timeout);
 }
@@ -59,7 +61,7 @@ int main() {
     const char* inputs[] = {"30s", "10ms", "1.5s", "1.5m", "1.5h", "1.5d", "1000d", "1000w", "25S", "4H", NULL, "0h", "42"};
     const double expected[] = {30, 0.01, 1.5, 90, 5400, 129600, 86400000, 604800000, 0.025, 14400, 0, 0, 0.042};
     for(i = 0; i != 13; i++)
-        assert(fabs(VCL_parse_time_value(inputs[i]) - expected[i]) < EPSILON);
+        assert(fabs(VCL_parse_time_value(inputs[i]) - expected[i]) < VCL_DC_EPSILON);
     printf("All unit tests on VCL_parse_time_value passed!\n");
 }
 #endif
