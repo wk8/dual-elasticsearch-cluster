@@ -4,7 +4,7 @@ Dual Elasticsearch Cluster
 This project allows you to have two separate ElasticSearch clusters in sync, 
 using Varnish (https://www.varnish-cache.org/).
 
-It is being in production, but YMMV.
+It is being used in production, but YMMV.
 
 
 Why would you want this?
@@ -69,7 +69,7 @@ Instructions
    against my version of Varnish's sources (see further instructions in xcir's
    README)
 
-3) Then checkout the current repo, and run the tests: make test
+3) Then checkout the present repo, and run the tests: make test
 
 4) Finally run make install with root privileges. It will prompt you for the
    hostnames and ports for both your main and secondary clusters, generate the
