@@ -1,10 +1,16 @@
-.PHONY: install test
+.PHONY: install build test
 
-.SILENT: install test
+.SILENT: install build test
+
+SHELL=/bin/bash
 
 ROOT_DIR := $(realpath $(dir $(lastword $(MAKEFILE_LIST))))
 
-all: install
+all: build
+
+build:
+	echo "Building the VCL files to $(ROOT_DIR)/build"
+	BUILD_DIR=$(ROOT_DIR)/build $(ROOT_DIR)/generate_vcl.sh
 
 install:
 	echo "Generating the VCL files..."

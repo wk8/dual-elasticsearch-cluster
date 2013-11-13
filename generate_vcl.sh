@@ -10,7 +10,10 @@
 # If they're not set, the user will be prompted
 # 
 # Additionnally, the following environment variables are optional:
-# - VARNISH_CONFIG_DIR: where to put the VCL files - defaults to /etc/varnish
+# - VARNISH_CONFIG_DIR: where Varnish expects its configuration files -
+#   defaults to /etc/varnish
+# - BUILD_DIR: where to put the generated files -
+#   defaults to $VARNISH_CONFIG_DIR
 # - MAIN_VCL_FILENAME: the name of the main VCL file - defaults to default.vcl
 # - TEMP_DIR: a dir where the current user can create temp files - defaults to
 #   /tmp/
@@ -72,9 +75,10 @@ genVCL_check_or_prompt_hosts() {
 # then let's check we have write access to the config and temp dirs
 genVCL_fail() { local EXIT_CODE; [ -z $2 ] && EXIT_CODE=1 || EXIT_CODE=$2; echo $1 && exit $EXIT_CODE; }
 [ -z "$VARNISH_CONFIG_DIR" ] && VARNISH_CONFIG_DIR='/etc/varnish'
-[ -w "$VARNISH_CONFIG_DIR" ] || genVCL_fail "Current user does NOT have write permissions on $VARNISH_CONFIG_DIR"
+[ -z "$BUILD_DIR" ] && BUILD_DIR=$VARNISH_CONFIG_DIR
+[ -w "$BUILD_DIR" ] || mkdir -p "$BUILD_DIR" || genVCL_fail "Current user does NOT have write permissions on $BUILD_DIR"
 [ -z "$TEMP_DIR" ] && TEMP_DIR='/tmp'
-[ -w "$TEMP_DIR" ] || genVCL_fail "Current user does NOT have write permissions on $TEMP_DIR"
+[ -w "$TEMP_DIR" ] || mkdir -p "$TEMP_DIR" || genVCL_fail "Current user does NOT have write permissions on $TEMP_DIR"
 [ -z "$MAIN_VCL_FILENAME" ] && MAIN_VCL_FILENAME='default.vcl'
 
 # and finally check the needed files are around, and readable
@@ -85,7 +89,7 @@ genVCL_check_file 'default.vcl.tpl'
 genVCL_check_file 'VCL_dual_cluster_parse_time.c'
 
 # an util function
-genVCL_cp_to_cfg_dir() { cp -f $1 "$VARNISH_CONFIG_DIR/$2" || genVCL_fail "Could not update the $VARNISH_CONFIG_DIR/$2 file"; }
+genVCL_cp_to_build_dir() { cp -f $1 "$BUILD_DIR/$2" || genVCL_fail "Could not update the $BUILD_DIR/$2 file"; }
 
 # first, let's generate the es_servers.vcl file
 # temp file to work on
@@ -115,15 +119,15 @@ genVCL_generate_vcl_servers() {
 }
 genVCL_generate_vcl_servers 'main_cluster' "$PRIMARY_CLUSTER"
 genVCL_generate_vcl_servers 'failover_cluster' "$SECONDARY_CLUSTER"
-genVCL_cp_to_cfg_dir $genVCL_TMP_FILE 'es_servers.vcl'
+genVCL_cp_to_build_dir $genVCL_TMP_FILE 'es_servers.vcl'
 
 # now let's generate the main VCL file - we need to escape slashes in the path
 cat "$genVCL_CURRENT_DIR/default.vcl.tpl" \
     | sed "s/<VARNISH_CONFIG_DIR>/$(sed "s/\//\\\\\//g" <<< $VARNISH_CONFIG_DIR)/g" \
     > $genVCL_TMP_FILE
-genVCL_cp_to_cfg_dir $genVCL_TMP_FILE "$MAIN_VCL_FILENAME"
+genVCL_cp_to_build_dir $genVCL_TMP_FILE "$MAIN_VCL_FILENAME"
 
 # and finally let's make sure the .c file is here
-genVCL_cp_to_cfg_dir "$genVCL_CURRENT_DIR/VCL_dual_cluster_parse_time.c" 'VCL_dual_cluster_parse_time.c'
+genVCL_cp_to_build_dir "$genVCL_CURRENT_DIR/VCL_dual_cluster_parse_time.c" 'VCL_dual_cluster_parse_time.c'
 
-echo "All done! Don't forget to restart Varnish: /etc/init.d/varnish restart"
+echo 'All done!'
