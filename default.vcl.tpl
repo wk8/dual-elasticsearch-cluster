@@ -54,5 +54,6 @@ sub vcl_deliver {
     if (req.request == "GET") {
         set resp.http.X-dual-cluster-origin = req.http.X-dual-cluster-origin;
     }
+    set resp.http.Connection = "close";
     return (deliver);
 }
